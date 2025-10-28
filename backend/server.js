@@ -15,6 +15,19 @@ const TMDB_IMG = "https://image.tmdb.org/t/p/w500";
 app.use(cors());
 app.use(express.json());
 
+app.get("/", (req, res) => {
+  res.json({
+    status: "ok",
+    message: "Desafio Filmes backend está rodando 🚀",
+    endpoints: {
+      search: "/search?q=matrix",
+      favorites_get: "/favorites",
+      share_post: "/share",
+      shared_get: "/shared/:id"
+    }
+  });
+});
+
 // "banco" em memória
 let favorites = []; // [{ id, titulo, nota, overview, poster }]
 let sharedLists = {}; // { shareId: [movies...] }
