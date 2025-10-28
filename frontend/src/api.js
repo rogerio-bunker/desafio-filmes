@@ -1,6 +1,13 @@
-const API_BASE = "http://localhost:3000";
+// substitua pela URL pública gerada pelo Render
+const PROD_API = "https://desafio-filmes-backend.onrender.com";
 
-// Busca filmes (agora via backend)
+const LOCAL_API = "http://localhost:3000";
+
+const API_BASE = window.location.hostname.includes("localhost")
+  ? LOCAL_API
+  : PROD_API;
+
+// Busca filmes
 export async function searchMovies(query) {
   if (!query || !query.trim()) return [];
   const resp = await fetch(`${API_BASE}/search?q=${encodeURIComponent(query)}`);
@@ -27,7 +34,7 @@ export async function addFavorite(movie) {
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ movie }),
   });
-  return resp.json(); // deve retornar { favoritos: [...] }
+  return resp.json();
 }
 
 export async function removeFavorite(id) {
@@ -37,14 +44,13 @@ export async function removeFavorite(id) {
   return resp.json();
 }
 
-// Compartilhar lista
 export async function shareFavorites(movies) {
   const resp = await fetch(`${API_BASE}/share`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ movies }),
   });
-  return resp.json(); // { shareId, url }
+  return resp.json();
 }
 
 export async function getSharedList(shareId) {
