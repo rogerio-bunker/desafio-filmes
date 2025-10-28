@@ -2,19 +2,25 @@ import express from "express";
 import cors from "cors";
 import axios from "axios";
 
-// CONFIGURAÇÕES BÁSICAS
 const app = express();
-const PORT = 3000;
 
-// sua chave TMDb
-const TMDB_API_KEY = "17e5f0785f7fbd2795d09d69daccc321";
+// Render (e serviços cloud em geral) definem a porta via env
+const PORT = process.env.PORT || 3000;
+
+// usa variável de ambiente se existir, senão fallback para sua chave
+const TMDB_API_KEY = process.env.TMDB_API_KEY || "17e5f0785f7fbd2795d09d69daccc321";
+
 const TMDB_BASE = "https://api.themoviedb.org/3";
 const TMDB_IMG = "https://image.tmdb.org/t/p/w500";
 
-// para permitir que o frontend (localhost:5173) acesse
 app.use(cors());
 app.use(express.json());
 
+// "banco" em memória
+let favorites = [];     // filmes favoritados
+let sharedLists = {};   // { shareId: [listaDeFilmes] }
+
+// rota raiz só pra health check
 app.get("/", (req, res) => {
   res.json({
     status: "ok",
@@ -22,17 +28,15 @@ app.get("/", (req, res) => {
     endpoints: {
       search: "/search?q=matrix",
       favorites_get: "/favorites",
+      favorites_post: "/favorites",
+      favorites_delete: "/favorites/:id",
       share_post: "/share",
       shared_get: "/shared/:id"
     }
   });
 });
 
-// "banco" em memória
-let favorites = []; // [{ id, titulo, nota, overview, poster }]
-let sharedLists = {}; // { shareId: [movies...] }
-
-// util pra normalizar filmes do TMDb no formato que o frontend espera
+// util de normalização
 function normalizeMovie(m) {
   return {
     id: m.id,
@@ -43,10 +47,7 @@ function normalizeMovie(m) {
   };
 }
 
-/*
-  GET /search?q=batman
-  Faz proxy pro TMDb, devolve filmes prontos pro frontend
-*/
+// GET /search?q=batman
 app.get("/search", async (req, res) => {
   const q = req.query.q;
   if (!q || !q.trim()) {
@@ -69,19 +70,12 @@ app.get("/search", async (req, res) => {
   }
 });
 
-/*
-  GET /favorites
-  Retorna a lista atual de favoritos
-*/
+// GET /favorites
 app.get("/favorites", (req, res) => {
   return res.json(favorites);
 });
 
-/*
-  POST /favorites
-  body: { movie }
-  Adiciona um filme aos favoritos (se não existir ainda)
-*/
+// POST /favorites { movie }
 app.post("/favorites", (req, res) => {
   const movie = req.body.movie;
   if (!movie || !movie.id) {
@@ -96,43 +90,30 @@ app.post("/favorites", (req, res) => {
   return res.json({ favoritos: favorites });
 });
 
-/*
-  DELETE /favorites/:id
-  Remove um filme favorito pelo ID
-*/
+// DELETE /favorites/:id
 app.delete("/favorites/:id", (req, res) => {
   const id = req.params.id;
   favorites = favorites.filter((m) => String(m.id) !== String(id));
   return res.json({ favoritos: favorites });
 });
 
-/*
-  POST /share
-  Gera um ID de compartilhamento e guarda o snapshot atual
-  body: { movies }
-*/
+// POST /share { movies }
 app.post("/share", (req, res) => {
   const movies = req.body.movies;
   if (!Array.isArray(movies)) {
     return res.status(400).json({ error: "Lista inválida" });
   }
 
-  // gera um ID aleatório simples
   const shareId = Math.random().toString(36).slice(2, 8);
-
   sharedLists[shareId] = movies;
 
-  // devolve um link amigável que o frontend pode exibir
   return res.json({
     shareId,
-    url: `http://localhost:${PORT}/shared/${shareId}`,
+    url: `https://desafio-filmes-backend.onrender.com/shared/${shareId}`
   });
 });
 
-/*
-  GET /shared/:id
-  Devolve uma lista compartilhada salva anteriormente
-*/
+// GET /shared/:id
 app.get("/shared/:id", (req, res) => {
   const { id } = req.params;
   const list = sharedLists[id];
